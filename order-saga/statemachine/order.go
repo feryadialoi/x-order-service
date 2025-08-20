@@ -24,13 +24,13 @@ const (
 )
 
 type Order struct {
-	eventConfigurer saga.EventConfigurer[entity.OrderState]
+	eventConfigurer saga.EventConfigurers[entity.OrderState]
 	eventActivities saga.EventActivities[entity.OrderState]
 }
 
 func NewOrder() *Order {
 	return &Order{
-		eventConfigurer: saga.EventConfigurer[entity.OrderState]{
+		eventConfigurer: saga.EventConfigurers[entity.OrderState]{
 			OrderSubmitted: func(c *saga.Context[entity.OrderState]) {
 				c.Entity.CorrelationID = jsonmapper.FromJSON[contract.OrderSubmitted](c.Message).OrderID
 			},
@@ -103,7 +103,7 @@ func NewOrder() *Order {
 	}
 }
 
-func (o *Order) EventConfigurer() saga.EventConfigurer[entity.OrderState] {
+func (o *Order) EventConfigurers() saga.EventConfigurers[entity.OrderState] {
 	return o.eventConfigurer
 }
 

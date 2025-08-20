@@ -5,7 +5,7 @@ import (
 )
 
 type StateMachine[T any] interface {
-	EventConfigurer() EventConfigurer[T]
+	EventConfigurers() EventConfigurers[T]
 	EventActivities() EventActivities[T]
 }
 
@@ -27,7 +27,7 @@ func (c *Context[T]) Context() context.Context {
 	return c.ctx
 }
 
-type EventConfigurer[T any] map[Event]func(c *Context[T])
+type EventConfigurers[T any] map[Event]func(c *Context[T])
 
 type Activity[T any] struct {
 	Then         func(c *Context[T]) error

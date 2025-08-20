@@ -69,10 +69,10 @@ func (h *consumerHandler[T]) Handle(ctx context.Context, key string, value map[s
 	event := Event(eventTypeValue)
 
 	// Get the event configurer from the state machine
-	eventConfigurer := h.machine.EventConfigurer()
+	eventConfigurers := h.machine.EventConfigurers()
 
 	// Check if we have a handler for this event
-	eventHandler, ok := eventConfigurer[event]
+	eventConfigurer, ok := eventConfigurers[event]
 	if !ok {
 		return nil // Skip events we don't handle
 	}
@@ -90,7 +90,7 @@ func (h *consumerHandler[T]) Handle(ctx context.Context, key string, value map[s
 	}
 
 	// Process the event to set correlation ID
-	eventHandler(&c)
+	eventConfigurer(&c)
 
 	// If no correlation ID was set, we can't proceed
 	if c.Entity.CorrelationID == "" {
@@ -149,35 +149,35 @@ func (h *consumerHandler[T]) Handle(ctx context.Context, key string, value map[s
 	// Get the event activities from the state machine
 	eventActivities := h.machine.EventActivities()
 
-	// Check if we have a transition for this state and event
-	activity, ok := eventActivities[currentState]
+	// Check if we have a activity for this state and event
+	activities, ok := eventActivities[currentState]
 	if !ok {
 		return nil
 	}
 
-	transition, ok := activity[event]
+	activity, ok := activities[event]
 	if !ok {
 		return nil
 	}
 
 	// Execute the "Then" function if provided
-	if transition.Then != nil {
-		if err := transition.Then(&c); err != nil {
+	if activity.Then != nil {
+		if err = activity.Then(&c); err != nil {
 			return err
 		}
 	}
 
 	// Publish a message if needed
-	if transition.Publish != nil {
+	if activity.Publish != nil {
 		slog.Info("Publishing message",
-			slog.Any("transition", transition),
+			slog.Any("activity", activity),
 		)
-		message := transition.Publish(&c)
+		message := activity.Publish(&c)
 		if message != nil {
 			// Get the event type from the message
 			if evt, ok := message.(contract.Event); ok {
 				// Send the message
-				if err := h.producer.Send(ctx, c.Entity.CorrelationID, message, kafka.Header{
+				if err = h.producer.Send(ctx, c.Entity.CorrelationID, message, kafka.Header{
 					"event_type": evt.GetEventType(),
 				}); err != nil {
 					return err
@@ -200,7 +200,7 @@ func (h *consumerHandler[T]) Handle(ctx context.Context, key string, value map[s
 	}
 
 	// Set the new state
-	c.Entity.CurrentState = string(transition.TransitionTo)
+	c.Entity.CurrentState = string(activity.TransitionTo)
 
 	slog.Info("Saving state",
 		slog.Any("order_state", c.Entity),
